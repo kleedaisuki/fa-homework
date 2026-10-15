@@ -12,7 +12,7 @@ import re
 from IPython.display import display
 import ipywidgets as widgets
 
-from projects.openrouter_client import ask_openrouter_stream
+from projects.deepseek_client import ask_deepseek_stream
 
 PROJECT_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -385,7 +385,7 @@ class AIChat:
 
     def _call_ai(self, message):
         # 记录本轮学生提问（增量）
-        """Stream OpenRouter feedback using the full conversation context."""
+        """Stream DeepSeek feedback using the full conversation context."""
         self.logger.log(f"【学生提问第{len(self.messages)}轮】", message)
 
         # 构建对话历史（只用于发送给大模型，不写入日志）
@@ -402,7 +402,7 @@ class AIChat:
         self.update_chat_display()
 
         full_reply = ""
-        for chunk in ask_openrouter_stream(full_prompt):
+        for chunk in ask_deepseek_stream(full_prompt):
             full_reply += chunk
             self.messages[-1] = ("assistant", full_reply + " ▌")
             self.update_chat_display()

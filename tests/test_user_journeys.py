@@ -6,14 +6,14 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import pytest
 
-from projects import openrouter_client as client
+from projects import deepseek_client as client
 from projects.clock_in import create_session_widgets
 from projects.problem_ai_helper import ThinkingAIChat, load_problems
 
 
 @pytest.fixture
 def server(monkeypatch):
-    """Serve a controlled OpenRouter-compatible endpoint over real HTTP."""
+    """Serve a controlled DeepSeek-compatible endpoint over real HTTP."""
     state = {"status": 200, "events": [": keepalive", 'data: {"choices":[{"delta":{"content":"你好"}}]}', 'data: {"choices":[{"delta":{"content":"，同学"}}]}', "data: [DONE]"], "requests": []}
 
     class Handler(BaseHTTPRequestHandler):
@@ -35,8 +35,8 @@ def server(monkeypatch):
     thread = threading.Thread(target=httpd.serve_forever, daemon=True)
     thread.start()
     monkeypatch.setattr(client, "API_URL", f"http://127.0.0.1:{httpd.server_port}/chat/completions")
-    monkeypatch.setenv("OPENROUTER_API_KEY", "test-secret")
-    monkeypatch.setenv("OPENROUTER_MODEL", "test/model")
+    monkeypatch.setenv("DEEPSEEK_API_KEY", "test-secret")
+    monkeypatch.setenv("DEEPSEEK_MODEL", "test/model")
     monkeypatch.setenv("NO_PROXY", "127.0.0.1")
     yield state
     httpd.shutdown()
@@ -46,7 +46,7 @@ def server(monkeypatch):
 
 def test_stream_and_request_contract(server):
     """Verify endpoint, bearer authentication, selected model, and Unicode."""
-    assert "".join(client.ask_openrouter_stream("test prompt")) == "你好，同学"
+    assert "".join(client.ask_deepseek_stream("test prompt")) == "你好，同学"
     path, auth, body = server["requests"][0]
     assert path == "/chat/completions"
     assert auth == "Bearer test-secret"
@@ -55,8 +55,8 @@ def test_stream_and_request_contract(server):
 
 def test_missing_key(monkeypatch):
     """Missing credentials must fail before making a network request."""
-    monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
-    assert "OPENROUTER_API_KEY" in "".join(client.ask_openrouter_stream("test"))
+    monkeypatch.delenv("DEEPSEEK_API_KEY", raising=False)
+    assert "DEEPSEEK_API_KEY" in "".join(client.ask_deepseek_stream("test"))
 
 
 @pytest.mark.parametrize("status", [400, 401, 402, 403, 404, 429, 500])
@@ -64,7 +64,7 @@ def test_http_errors_are_safe(server, status):
     """Do not expose an upstream body that could contain credentials."""
     server["status"] = status
     server["events"] = ["test-secret"]
-    reply = "".join(client.ask_openrouter_stream("test"))
+    reply = "".join(client.ask_deepseek_stream("test"))
     assert str(status) in reply
     assert "test-secret" not in reply
 
@@ -73,15 +73,15 @@ def test_http_errors_are_safe(server, status):
 def test_bad_or_incomplete_stream(server, events):
     """Malformed, empty, failed, and truncated streams report safe errors."""
     server["events"] = events
-    reply = "".join(client.ask_openrouter_stream("test"))
+    reply = "".join(client.ask_deepseek_stream("test"))
     assert "❌" in reply
     assert "test-secret" not in reply
 
 
 def test_default_model(server, monkeypatch):
-    """Blank configuration selects the documented router default."""
-    monkeypatch.setenv("OPENROUTER_MODEL", " ")
-    list(client.ask_openrouter_stream("test"))
+    """Blank configuration selects the documented DeepSeek Flash default."""
+    monkeypatch.setenv("DEEPSEEK_MODEL", " ")
+    list(client.ask_deepseek_stream("test"))
     assert server["requests"][0][2]["model"] == client.DEFAULT_MODEL
 
 
@@ -141,3 +141,38 @@ reference:
     assert len(server['requests']) == 2
     assert '// TODO: transition' in server['requests'][-1][2]['messages'][0]['content']
     assert '你好，同学' in (tmp_path / 'fa.log').read_text(encoding='utf-8')
+
+
+def test_deepseek_endpoint_and_model():
+    """Pin the official endpoint and V4.1-Flash API identifier."""
+    assert client.API_URL == 'https://api.deepseek.com/chat/completions'
+    assert client.DEFAULT_MODEL == 'deepseek-flash'
+
+
+def test_previous_key_is_not_used(monkeypatch):
+    """Do not silently authenticate with the previous provider's key."""
+    monkeypatch.delenv('DEEPSEEK_API_KEY', raising=False)
+    monkeypatch.setenv('OPENROUTER_API_KEY', 'old-provider-secret')
+    reply = ''.join(client.ask_deepseek_stream('test'))
+    assert 'DEEPSEEK_API_KEY' in reply
+    assert 'old-provider-secret' not in reply
+
+
+def test_reasoning_frames_are_not_displayed(server):
+    """Render only the final answer, not model reasoning or usage frames."""
+    server['events'] = [
+        ': keepalive',
+        'data: {"choices":[{"delta":{"reasoning_content":"private reasoning"}}]}',
+        'data: {"choices":[{"delta":{"content":"你好"}}]}',
+        'data: {"choices":[],"usage":{"total_tokens":10}}',
+        'data: [DONE]',
+    ]
+    assert ''.join(client.ask_deepseek_stream('test')) == '你好'
+
+
+def test_compatibility_import_uses_deepseek(server):
+    """The previous Python callable delegates exclusively to DeepSeek."""
+    from projects.openrouter_client import ask_openrouter_stream
+
+    assert ask_openrouter_stream is client.ask_deepseek_stream
+    assert ''.join(ask_openrouter_stream('test')) == '你好，同学'

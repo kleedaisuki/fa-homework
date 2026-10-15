@@ -1,4 +1,6 @@
-# OpenRouter migration and verification
+# Historical: OpenRouter migration and verification
+
+Superseded by `deepseek-migration.md`. This records the previous transport only; current tutors use DeepSeek.
 
 ## Design
 
@@ -23,7 +25,7 @@
 
 Windows user environment variables are inherited only when processes start. The desktop process did not initially contain the key, but the Windows user environment did. Load that value into the current PowerShell process before launching Jupyter (README), or restart the parent app/terminal. The application itself reads ordinary process environment variables only.
 
-The GitHub repository is private by default because the source includes course materials. Local study logs, virtual environments, secrets, and scratch data are excluded from version control.
+The repository was initially private and subsequently made public at the user's explicit request. Local study logs, virtual environments, secrets, and scratch data are excluded from version control.
 
 ## References
 

@@ -11,7 +11,7 @@ import re
 from IPython.display import display, Javascript
 import ipywidgets as widgets
 
-from projects.openrouter_client import ask_openrouter_stream
+from projects.deepseek_client import ask_deepseek_stream
 
 PROJECT_DIR = os.path.dirname(os.path.abspath(__file__))
 LOG_FILE = "fa.log"
@@ -236,7 +236,7 @@ class ThinkingAIChat:
         self._call_ai(text)
 
     def _call_ai(self, message):
-        """Stream OpenRouter feedback using the full conversation context."""
+        """Stream DeepSeek feedback using the full conversation context."""
         self.logger.log(f"【学生回答第{len(self.messages)}轮】", message)
         history_text = ""
         for role, content in self.messages[:-1]:
@@ -247,7 +247,7 @@ class ThinkingAIChat:
         self.messages.append(("assistant", "正在思考..."))
         self.update_chat_display()
         full_reply = ""
-        for chunk in ask_openrouter_stream(full_prompt):
+        for chunk in ask_deepseek_stream(full_prompt):
             full_reply += chunk
             self.messages[-1] = ("assistant", full_reply + " ▌")
             self.update_chat_display()

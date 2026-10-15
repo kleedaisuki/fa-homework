@@ -1,7 +1,7 @@
 [project]
 name = "fa-homework"
 version = "0.1.0"
-description = "Finite automata coursework with OpenRouter-powered notebook tutors"
+description = "Finite automata coursework with DeepSeek-powered notebook tutors"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
